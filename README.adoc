@@ -1,0 +1,10 @@
+= Quarkus QueryDSL extension
+
+This is a https://github.com/quarkusio/quarkus[Quarkus] extension for https://github.com/querydsl/querydsl[QueryDSL].
+
+== deployment maven
+clean install -Dmaven.test.skip=false -Dquarkus.debug.generated-classes-dir=./target/app-generated-classes
+
+
+== runtime maven
+clean install -Dmaven.test.skip=true
