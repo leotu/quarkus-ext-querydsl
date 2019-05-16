@@ -22,13 +22,13 @@ public abstract class AbstractQueryFactoryProducer {
     private static final Logger log = Logger.getLogger(AbstractQueryFactoryProducer.class);
 
     public QueryFactoryWrapper<?, ?> createQueryFactory(String sqlTemplates, AgroalDataSource dataSource,
-            String registerCustomType) {
+            String registerCustomType, String factoryAlias) {
         Objects.requireNonNull(sqlTemplates, "sqlTemplates");
         Objects.requireNonNull(dataSource, "dataSource");
 
         if (registerCustomType == null || registerCustomType.isEmpty()) {
             return createQueryFactory(sqlTemplates, dataSource, new QuerydslCustomTypeRegister() {
-            });
+            }, factoryAlias);
         } else {
             ClassLoader cl = Thread.currentThread().getContextClassLoader();
             if (cl == null) {
@@ -37,7 +37,7 @@ public abstract class AbstractQueryFactoryProducer {
             try {
                 Class<?> clazz = cl.loadClass(registerCustomType);
                 QuerydslCustomTypeRegister instance = (QuerydslCustomTypeRegister) clazz.newInstance();
-                return createQueryFactory(sqlTemplates, dataSource, instance);
+                return createQueryFactory(sqlTemplates, dataSource, instance, factoryAlias);
             } catch (Exception e) {
                 log.error(registerCustomType, e);
                 throw new RuntimeException(e);
@@ -46,11 +46,11 @@ public abstract class AbstractQueryFactoryProducer {
     }
 
     public QueryFactoryWrapper<?, ?> createQueryFactory(String sqlTemplates, AgroalDataSource dataSource,
-            QuerydslCustomTypeRegister registerCustomType) {
+            QuerydslCustomTypeRegister registerCustomType, String factoryAlias) {
         Objects.requireNonNull(sqlTemplates, "sqlTemplates");
         Objects.requireNonNull(dataSource, "dataSource");
         Objects.requireNonNull(registerCustomType, "registerCustomType");
-        return QueryFactory.create(sqlTemplates, dataSource, registerCustomType);
+        return QueryFactory.create(sqlTemplates, dataSource, registerCustomType, factoryAlias);
     }
 
     /**

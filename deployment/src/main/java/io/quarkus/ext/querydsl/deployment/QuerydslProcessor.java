@@ -88,7 +88,9 @@ public class QuerydslProcessor {
             BuildProducer<ReflectiveClassBuildItem> reflectiveClass,
             BuildProducer<UnremovableBeanBuildItem> unremovableBeans, QuerydslConfig querydslConfig,
             BuildProducer<GeneratedBeanBuildItem> generatedBean, AgroalBuildTimeConfig agroalBuildTimeConfig) {
-
+        if (isUnconfigured(querydslConfig)) {
+            return null;
+        }
         reflectiveClass.produce(new ReflectiveClassBuildItem(true, false, AbstractQueryFactoryProducer.class));
         reflectiveClass.produce(new ReflectiveClassBuildItem(true, true, AbstractSQLDeleteClause.class,
                 AbstractSQLUpdateClause.class, AbstractSQLInsertClause.class, SQLMergeClause.class));
@@ -104,15 +106,23 @@ public class QuerydslProcessor {
 
     @Record(ExecutionTime.RUNTIME_INIT)
     @BuildStep
-    void configureDataSource(QuerydslTemplate template, DataSourceInitializedBuildItem dataSourceInitialized,
+    void configureDataSource(QuerydslTemplate template,
+            DataSourceInitializedBuildItem dataSourceInitialized,
             BuildProducer<QuerydslInitializedBuildItem> querydslInitialized, QuerydslConfig querydslConfig) {
-
-        if (!isPresentTemplate(querydslConfig.defaultConfig) && querydslConfig.namedConfig.isEmpty()) {
-            // No QueryDSL has been configured so bail out
-            log.info("No QueryDSL has been configured");
+        if (isUnconfigured(querydslConfig)) {
             return;
         }
         querydslInitialized.produce(new QuerydslInitializedBuildItem());
+    }
+
+    private boolean isUnconfigured(QuerydslConfig querydslConfig) {
+        if (!isPresentTemplate(querydslConfig.defaultConfig) && querydslConfig.namedConfig.isEmpty()) {
+            // No QueryDSL has been configured so bail out
+            log.debug("No QueryDSL has been configured");
+            return true;
+        } else {
+            return false;
+        }
     }
 
     private void createQueryFactoryProducerBean(BuildProducer<GeneratedBeanBuildItem> generatedBean,
@@ -162,10 +172,14 @@ public class QuerydslProcessor {
             defaultDataSourceCreator.addAnnotation(Default.class);
             defaultDataSourceCreator.addAnnotation(Inject.class);
 
-            //
+            String factoryAlias = defaultConfig.factoryAlias.orElse(null);
+            if (factoryAlias != null) {
+                log.debugv("BeanClassNameExclusion: factoryAlias: {0}", factoryAlias);
+                unremovableBeans.produce(new UnremovableBeanBuildItem(new BeanClassNameExclusion(factoryAlias)));
+            }
             String template = defaultConfig.template;
             MethodCreator defaultQueryFactoryMethodCreator = classCreator.getMethodCreator("createDefaultQueryFactory",
-                    QueryFactory.getQueryFactoryType(template));
+                    QueryFactory.getQueryFactoryType(template, factoryAlias));
 
             defaultQueryFactoryMethodCreator.addAnnotation(Singleton.class);
             defaultQueryFactoryMethodCreator.addAnnotation(Produces.class);
@@ -176,6 +190,9 @@ public class QuerydslProcessor {
             ResultHandle dataSourceRH = defaultQueryFactoryMethodCreator.readInstanceField(
                     FieldDescriptor.of(classCreator.getClassName(), dsVarName, AgroalDataSource.class.getName()),
                     defaultQueryFactoryMethodCreator.getThis());
+
+            ResultHandle factoryAliasRH = factoryAlias != null ? defaultQueryFactoryMethodCreator.load(factoryAlias)
+                    : defaultQueryFactoryMethodCreator.loadNull();
 
             if (defaultConfig.registerCustomTypeInject.isPresent()) {
                 String registerCustomTypeInjectName = defaultConfig.registerCustomTypeInject.get();
@@ -199,9 +216,9 @@ public class QuerydslProcessor {
                         defaultQueryFactoryMethodCreator.invokeVirtualMethod(
                                 MethodDescriptor.ofMethod(AbstractQueryFactoryProducer.class, "createQueryFactory",
                                         QueryFactoryWrapper.class, String.class, AgroalDataSource.class,
-                                        QuerydslCustomTypeRegister.class),
+                                        QuerydslCustomTypeRegister.class, String.class),
                                 defaultQueryFactoryMethodCreator.getThis(), templateRH, dataSourceRH,
-                                registerCustomTypeRH));
+                                registerCustomTypeRH, factoryAliasRH));
             } else {
                 ResultHandle registerCustomTypeRH = defaultConfig.registerCustomType.isPresent()
                         ? defaultQueryFactoryMethodCreator.load(defaultConfig.registerCustomType.get())
@@ -215,9 +232,10 @@ public class QuerydslProcessor {
                 defaultQueryFactoryMethodCreator.returnValue( //
                         defaultQueryFactoryMethodCreator.invokeVirtualMethod(
                                 MethodDescriptor.ofMethod(AbstractQueryFactoryProducer.class, "createQueryFactory",
-                                        QueryFactoryWrapper.class, String.class, AgroalDataSource.class, String.class),
+                                        QueryFactoryWrapper.class, String.class, AgroalDataSource.class, String.class,
+                                        String.class),
                                 defaultQueryFactoryMethodCreator.getThis(), templateRH, dataSourceRH,
-                                registerCustomTypeRH));
+                                registerCustomTypeRH, factoryAliasRH));
             }
         }
 
@@ -248,9 +266,15 @@ public class QuerydslProcessor {
             dataSourceCreator.addAnnotation(AnnotationInstance.create(DotNames.NAMED, null,
                     new AnnotationValue[] { AnnotationValue.createStringValue("value", dataSourceName) }));
 
+            String factoryAlias = namedConfig.factoryAlias.orElse(null);
+            if (factoryAlias != null) {
+                log.debugv("BeanClassNameExclusion: factoryAlias: {0}", factoryAlias);
+                unremovableBeans.produce(new UnremovableBeanBuildItem(new BeanClassNameExclusion(factoryAlias)));
+            }
+
             MethodCreator namedQueryFactoryMethodCreator = classCreator.getMethodCreator(
                     "createNamedQueryFactory_" + suffix,
-                    QueryFactory.getQueryFactoryType(namedConfig.template).getName());
+                    QueryFactory.getQueryFactoryType(namedConfig.template, factoryAlias).getName());
 
             namedQueryFactoryMethodCreator.addAnnotation(ApplicationScoped.class);
             namedQueryFactoryMethodCreator.addAnnotation(Produces.class);
@@ -264,6 +288,9 @@ public class QuerydslProcessor {
             ResultHandle dataSourceRH = namedQueryFactoryMethodCreator.readInstanceField(
                     FieldDescriptor.of(classCreator.getClassName(), dsVarName, AgroalDataSource.class.getName()),
                     namedQueryFactoryMethodCreator.getThis());
+
+            ResultHandle factoryAliasRH = factoryAlias != null ? namedQueryFactoryMethodCreator.load(factoryAlias)
+                    : namedQueryFactoryMethodCreator.loadNull();
 
             if (namedConfig.registerCustomTypeInject.isPresent()) {
                 String registerCustomTypeInjectName = namedConfig.registerCustomTypeInject.get();
@@ -287,8 +314,9 @@ public class QuerydslProcessor {
                 namedQueryFactoryMethodCreator.returnValue(namedQueryFactoryMethodCreator.invokeVirtualMethod(
                         MethodDescriptor.ofMethod(AbstractQueryFactoryProducer.class, "createQueryFactory",
                                 QueryFactoryWrapper.class, String.class, AgroalDataSource.class,
-                                QuerydslCustomTypeRegister.class),
-                        namedQueryFactoryMethodCreator.getThis(), templateRH, dataSourceRH, registerCustomTypeRH));
+                                QuerydslCustomTypeRegister.class, String.class),
+                        namedQueryFactoryMethodCreator.getThis(), templateRH, dataSourceRH, registerCustomTypeRH,
+                        factoryAliasRH));
 
             } else {
                 ResultHandle registerCustomTypeRH = namedConfig.registerCustomType.isPresent()
@@ -302,8 +330,10 @@ public class QuerydslProcessor {
 
                 namedQueryFactoryMethodCreator.returnValue(namedQueryFactoryMethodCreator.invokeVirtualMethod(
                         MethodDescriptor.ofMethod(AbstractQueryFactoryProducer.class, "createQueryFactory",
-                                QueryFactoryWrapper.class, String.class, AgroalDataSource.class, String.class),
-                        namedQueryFactoryMethodCreator.getThis(), templateRH, dataSourceRH, registerCustomTypeRH));
+                                QueryFactoryWrapper.class, String.class, AgroalDataSource.class, String.class,
+                                String.class),
+                        namedQueryFactoryMethodCreator.getThis(), templateRH, dataSourceRH, registerCustomTypeRH,
+                        factoryAliasRH));
             }
         }
 

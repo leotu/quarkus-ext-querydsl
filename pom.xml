@@ -21,7 +21,7 @@
     <parent>
         <artifactId>quarkus-build-parent</artifactId>
         <groupId>io.quarkus</groupId>
-        <version>0.14.0</version>
+        <version>0.15.0</version>
          <!-- "relativePath" must be point to "https://github.com/quarkusio/quarkus" checkout directory -->
         <relativePath>../quarkus/build-parent/pom.xml</relativePath> 
     </parent>

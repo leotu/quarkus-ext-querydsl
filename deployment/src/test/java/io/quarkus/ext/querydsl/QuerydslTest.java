@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import io.quarkus.ext.querydsl.runtime.QueryFactory.SQL;
+import io.quarkus.ext.querydsl.runtime.QueryFactory.SQLFactory;
 import io.quarkus.ext.querydsl.runtime.QuerydslCustomTypeRegister;
 import io.quarkus.runtime.ShutdownEvent;
 import io.quarkus.runtime.StartupEvent;
@@ -53,7 +53,8 @@ public class QuerydslTest {
     static public void startDatabase() {
         LOGGER.debug("Start H2 server..." + server);
         try {
-            server = Server.createTcpServer(new String[] { "-trace", "-tcp", "-tcpAllowOthers", "-tcpPort", "19092" }).start();
+            server = Server.createTcpServer(new String[] { "-trace", "-tcp", "-tcpAllowOthers", "-tcpPort", "19092" })
+                    .start();
             Thread.sleep(1000 * 1); // waiting for database to be ready
         } catch (Exception e) {
             LOGGER.error("Start H2 server failed", e);
@@ -125,15 +126,15 @@ public class QuerydslTest {
     static class TestBean {
 
         @Inject
-        SQL queryFactory; // default
+        DSLFactory queryFactory; // default + factory alias
 
         @Inject
         @Named("qf1")
-        SQL queryFactory1;
+        SQLFactory queryFactory1;
 
         @Inject
         @Named("qf2")
-        SQL queryFactory2;
+        DSLFactory2 queryFactory2; // factory alias
 
         @Inject
         @Named("myCustomTypeRegister2")
@@ -310,17 +311,17 @@ public class QuerydslTest {
 
     static class ServiceAction {
 
-        final private SQL queryFactory;
+        final private SQLFactory queryFactory;
         final private int loop;
         final private String prefix;
 
-        public ServiceAction(SQL queryFactory, String prefix, int loop) {
+        public ServiceAction(SQLFactory queryFactory, String prefix, int loop) {
             this.queryFactory = queryFactory;
             this.prefix = prefix;
             this.loop = loop;
         }
 
-        public ServiceAction(SQL queryFactory) {
+        public ServiceAction(SQLFactory queryFactory) {
             this.queryFactory = queryFactory;
             this.prefix = null;
             this.loop = -1;

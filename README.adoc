@@ -8,3 +8,17 @@ clean install -Dmaven.test.skip=false -Dquarkus.debug.generated-classes-dir=./ta
 
 == runtime maven
 clean install -Dmaven.test.skip=true
+
+== Test docker
+ 
+[source,bash]
+--------------
+docker pull oscarfonts/h2:alpine
+docker run --name demo.h2 -e LANG=en.UTF-8 -e LC_ALL=en.UTF-8 -p 19092:1521 -p 8181:81 -v /tmp/h2-data:/opt/h2-data -d oscarfonts/h2:alpine
+--------------
+
+== Check docker
+[source,text]
+--------------
+docker logs -f demo.h2
+curl http://localhost:8181

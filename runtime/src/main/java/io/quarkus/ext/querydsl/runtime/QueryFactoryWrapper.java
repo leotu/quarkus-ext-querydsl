@@ -29,6 +29,10 @@ public class QueryFactoryWrapper<Q extends AbstractSQLQuery<?, ?>, F extends Abs
         this.delegate = delegate;
     }
 
+    public void setDelegate(F delegate) {
+        this.delegate = delegate;
+    }
+
     public F getDelegate() {
         return delegate;
     }

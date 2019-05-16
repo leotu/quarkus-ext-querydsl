@@ -25,6 +25,12 @@ public class QueryFactoryItemConfig {
     public Optional<String> datasource;
 
     /**
+     * The QueryDSL factory alias name by inject named
+     */
+    @ConfigItem
+    public Optional<String> factoryAlias;
+
+    /**
      * The QueryDSL register Custom Type
      */
     @ConfigItem
@@ -38,8 +44,9 @@ public class QueryFactoryItemConfig {
 
     @Override
     public String toString() {
-        return super.toString() + "[template=" + template + ", datasource=" + datasource + ", registerCustomType="
-                + registerCustomType + ", registerCustomTypeInject=" + registerCustomTypeInject + "]";
+        return super.toString() + "[template=" + template + ", datasource=" + datasource + ", factoryAlias="
+                + factoryAlias + ", registerCustomType=" + registerCustomType + ", registerCustomTypeInject="
+                + registerCustomTypeInject + "]";
     }
 
 }
