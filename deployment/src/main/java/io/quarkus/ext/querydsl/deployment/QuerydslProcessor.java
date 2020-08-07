@@ -1,12 +1,16 @@
 package io.quarkus.ext.querydsl.deployment;
 
+import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Default;
 import javax.enterprise.inject.Produces;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import javax.sql.DataSource;
 
 import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.AnnotationValue;
@@ -19,21 +23,19 @@ import com.querydsl.sql.dml.AbstractSQLInsertClause;
 import com.querydsl.sql.dml.AbstractSQLUpdateClause;
 import com.querydsl.sql.dml.SQLMergeClause;
 
-import io.agroal.api.AgroalDataSource;
-import io.quarkus.agroal.deployment.DataSourceInitializedBuildItem;
-import io.quarkus.agroal.runtime.AgroalBuildTimeConfig;
-import io.quarkus.agroal.runtime.AgroalTemplate;
+import io.quarkus.agroal.deployment.JdbcDataSourceBuildItem;
 import io.quarkus.arc.deployment.BeanContainerListenerBuildItem;
 import io.quarkus.arc.deployment.GeneratedBeanBuildItem;
 import io.quarkus.arc.deployment.UnremovableBeanBuildItem;
 import io.quarkus.arc.deployment.UnremovableBeanBuildItem.BeanClassNameExclusion;
 import io.quarkus.arc.processor.DotNames;
+import io.quarkus.datasource.common.runtime.DataSourceUtil;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.ExecutionTime;
 import io.quarkus.deployment.annotations.Record;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
-import io.quarkus.deployment.builditem.substrate.ReflectiveClassBuildItem;
+import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.deployment.recording.RecorderContext;
 import io.quarkus.deployment.util.HashUtil;
 import io.quarkus.ext.querydsl.runtime.AbstractQueryFactoryProducer;
@@ -58,9 +60,10 @@ import io.quarkus.gizmo.ResultHandle;
  * <pre>
  * https://quarkus.io/guides/cdi-reference#supported_features
  * https://github.com/quarkusio/gizmo
+ * https://quarkus.io/guides/datasource
  * </pre>
  * 
- * @author <a href="mailto:leo.tu.taipei@gmail.com">Leo Tu</a>
+ * @author Leo Tu
  */
 public class QuerydslProcessor {
     private static final Logger log = Logger.getLogger(QuerydslProcessor.class);
@@ -76,8 +79,7 @@ public class QuerydslProcessor {
      * @return QueryDSL feature build item
      */
     @Record(ExecutionTime.STATIC_INIT)
-    @BuildStep(providesCapabilities = "io.quarkus.ext.querydsl")
-    FeatureBuildItem featureBuildItem() {
+    FeatureBuildItem feature() {
         return new FeatureBuildItem("querydsl");
     }
 
@@ -87,7 +89,8 @@ public class QuerydslProcessor {
     BeanContainerListenerBuildItem build(RecorderContext recorder, QuerydslTemplate template,
             BuildProducer<ReflectiveClassBuildItem> reflectiveClass,
             BuildProducer<UnremovableBeanBuildItem> unremovableBeans, QuerydslConfig querydslConfig,
-            BuildProducer<GeneratedBeanBuildItem> generatedBean, AgroalBuildTimeConfig agroalBuildTimeConfig) {
+            BuildProducer<GeneratedBeanBuildItem> generatedBean, List<JdbcDataSourceBuildItem> jdbcDataSourceBuildItems) {
+
         if (isUnconfigured(querydslConfig)) {
             return null;
         }
@@ -99,7 +102,7 @@ public class QuerydslProcessor {
             log.warn("No default sql-template been defined");
         }
 
-        createQueryFactoryProducerBean(generatedBean, unremovableBeans, querydslConfig, agroalBuildTimeConfig);
+        createQueryFactoryProducerBean(generatedBean, unremovableBeans, querydslConfig, jdbcDataSourceBuildItems);
         return new BeanContainerListenerBuildItem(template.addContainerCreatedListener(
                 (Class<? extends AbstractQueryFactoryProducer>) recorder.classProxy(queryFactoryProducerClassName)));
     }
@@ -107,7 +110,6 @@ public class QuerydslProcessor {
     @Record(ExecutionTime.RUNTIME_INIT)
     @BuildStep
     void configureDataSource(QuerydslTemplate template,
-            DataSourceInitializedBuildItem dataSourceInitialized,
             BuildProducer<QuerydslInitializedBuildItem> querydslInitialized, QuerydslConfig querydslConfig) {
         if (isUnconfigured(querydslConfig)) {
             return;
@@ -118,7 +120,7 @@ public class QuerydslProcessor {
     private boolean isUnconfigured(QuerydslConfig querydslConfig) {
         if (!isPresentTemplate(querydslConfig.defaultConfig) && querydslConfig.namedConfig.isEmpty()) {
             // No QueryDSL has been configured so bail out
-            log.debug("No QueryDSL has been configured");
+            log.info("No QueryDSL has been configured");
             return true;
         } else {
             return false;
@@ -127,46 +129,35 @@ public class QuerydslProcessor {
 
     private void createQueryFactoryProducerBean(BuildProducer<GeneratedBeanBuildItem> generatedBean,
             BuildProducer<UnremovableBeanBuildItem> unremovableBeans, QuerydslConfig querydslConfig,
-            AgroalBuildTimeConfig dataSourceConfig) {
+            List<JdbcDataSourceBuildItem> jdbcDataSourceBuildItems) {
+
         ClassOutput classOutput = new ClassOutput() {
             @Override
             public void write(String name, byte[] data) {
                 generatedBean.produce(new GeneratedBeanBuildItem(name, data));
             }
         };
-        unremovableBeans
-                .produce(new UnremovableBeanBuildItem(new BeanClassNameExclusion(queryFactoryProducerClassName)));
+        unremovableBeans.produce(new UnremovableBeanBuildItem(new BeanClassNameExclusion(queryFactoryProducerClassName)));
 
         ClassCreator classCreator = ClassCreator.builder().classOutput(classOutput)
                 .className(queryFactoryProducerClassName).superClass(AbstractQueryFactoryProducer.class).build();
         classCreator.addAnnotation(ApplicationScoped.class);
 
+        Set<String> dataSourceNames = jdbcDataSourceBuildItems.stream().map(JdbcDataSourceBuildItem::getName)
+                .collect(Collectors.toSet());
+
         QueryFactoryItemConfig defaultConfig = querydslConfig.defaultConfig;
         if (isPresentTemplate(defaultConfig)) {
-            if (!dataSourceConfig.defaultDataSource.driver.isPresent()) {
-                log.warn("Default dataSource not found");
-                System.err.println(">>> Default dataSource not found");
+            if (!DataSourceUtil.hasDefault(dataSourceNames)) {
+                log.warn("Default data source not found");
             }
             if (defaultConfig.datasource.isPresent()
-                    && !AgroalTemplate.DEFAULT_DATASOURCE_NAME.equals(defaultConfig.datasource.get())) {
-                log.warn("Skip default dataSource name: " + defaultConfig.datasource.get());
+                    && !DataSourceUtil.isDefault(defaultConfig.datasource.get())) {
+                log.warnv("Skip default data source name: {}", defaultConfig.datasource.get());
             }
             String dsVarName = "defaultDataSource";
 
-            // FIXME: Lazy Initialize DataSource ?
-            // Type[] args = new Type[] {
-            // Type.create(DotName.createSimple(AgroalDataSource.class.getName()),
-            // Kind.CLASS) };
-            // ParameterizedType type =
-            // ParameterizedType.create(DotName.createSimple(Instance.class.getName()),
-            // args, null);
-            // log.debug("type: " + type); //
-            // javax.enterprise.inject.Instance<io.agroal.api.AgroalDataSource>
-            // FieldCreator defaultDataSourceCreator = classCreator.getFieldCreator(varName,
-            // DescriptorUtils.typeToString(type))
-            // .setModifiers(Opcodes.ACC_MODULE);
-
-            FieldCreator defaultDataSourceCreator = classCreator.getFieldCreator(dsVarName, AgroalDataSource.class)
+            FieldCreator defaultDataSourceCreator = classCreator.getFieldCreator(dsVarName, DataSource.class)
                     .setModifiers(Opcodes.ACC_MODULE);
 
             defaultDataSourceCreator.addAnnotation(Default.class);
@@ -188,7 +179,7 @@ public class QuerydslProcessor {
             ResultHandle templateRH = defaultQueryFactoryMethodCreator.load(template);
 
             ResultHandle dataSourceRH = defaultQueryFactoryMethodCreator.readInstanceField(
-                    FieldDescriptor.of(classCreator.getClassName(), dsVarName, AgroalDataSource.class.getName()),
+                    FieldDescriptor.of(classCreator.getClassName(), dsVarName, DataSource.class.getName()),
                     defaultQueryFactoryMethodCreator.getThis());
 
             ResultHandle factoryAliasRH = factoryAlias != null ? defaultQueryFactoryMethodCreator.load(factoryAlias)
@@ -212,10 +203,10 @@ public class QuerydslProcessor {
                                 QuerydslCustomTypeRegister.class.getName()),
                         defaultQueryFactoryMethodCreator.getThis());
 
-                defaultQueryFactoryMethodCreator.returnValue( //
+                defaultQueryFactoryMethodCreator.returnValue(
                         defaultQueryFactoryMethodCreator.invokeVirtualMethod(
                                 MethodDescriptor.ofMethod(AbstractQueryFactoryProducer.class, "createQueryFactory",
-                                        QueryFactoryWrapper.class, String.class, AgroalDataSource.class,
+                                        QueryFactoryWrapper.class, String.class, DataSource.class,
                                         QuerydslCustomTypeRegister.class, String.class),
                                 defaultQueryFactoryMethodCreator.getThis(), templateRH, dataSourceRH,
                                 registerCustomTypeRH, factoryAliasRH));
@@ -229,10 +220,10 @@ public class QuerydslProcessor {
                             new BeanClassNameExclusion(defaultConfig.registerCustomType.get())));
                 }
 
-                defaultQueryFactoryMethodCreator.returnValue( //
+                defaultQueryFactoryMethodCreator.returnValue(
                         defaultQueryFactoryMethodCreator.invokeVirtualMethod(
                                 MethodDescriptor.ofMethod(AbstractQueryFactoryProducer.class, "createQueryFactory",
-                                        QueryFactoryWrapper.class, String.class, AgroalDataSource.class, String.class,
+                                        QueryFactoryWrapper.class, String.class, DataSource.class, String.class,
                                         String.class),
                                 defaultQueryFactoryMethodCreator.getThis(), templateRH, dataSourceRH,
                                 registerCustomTypeRH, factoryAliasRH));
@@ -247,20 +238,19 @@ public class QuerydslProcessor {
                 continue;
             }
             if (!namedConfig.datasource.isPresent()) {
-                log.warnv("(!config.datasource.isPresent()), named: {0}, namedConfig: {1}", named, namedConfig);
+                log.warnv("!namedConfig.datasource.isPresent(), named: {0}, namedConfig: {1}", named, namedConfig);
                 continue;
             }
 
             String dataSourceName = namedConfig.datasource.get();
-            if (!dataSourceConfig.namedDataSources.containsKey(dataSourceName)) {
-                log.warnv("Named: '{0}' dataSource not found", dataSourceName);
-                System.err.println(">>> Named: '" + dataSourceName + "' dataSource not found");
+            if (!dataSourceNames.contains(dataSourceName)) {
+                log.warnv("Named: {0} data source not found", dataSourceName);
             }
 
             String suffix = HashUtil.sha1(named);
             String dsVarName = "dataSource_" + suffix;
 
-            FieldCreator dataSourceCreator = classCreator.getFieldCreator(dsVarName, AgroalDataSource.class)
+            FieldCreator dataSourceCreator = classCreator.getFieldCreator(dsVarName, DataSource.class)
                     .setModifiers(Opcodes.ACC_MODULE);
             dataSourceCreator.addAnnotation(Inject.class);
             dataSourceCreator.addAnnotation(AnnotationInstance.create(DotNames.NAMED, null,
@@ -286,7 +276,7 @@ public class QuerydslProcessor {
             ResultHandle templateRH = namedQueryFactoryMethodCreator.load(namedConfig.template);
 
             ResultHandle dataSourceRH = namedQueryFactoryMethodCreator.readInstanceField(
-                    FieldDescriptor.of(classCreator.getClassName(), dsVarName, AgroalDataSource.class.getName()),
+                    FieldDescriptor.of(classCreator.getClassName(), dsVarName, DataSource.class.getName()),
                     namedQueryFactoryMethodCreator.getThis());
 
             ResultHandle factoryAliasRH = factoryAlias != null ? namedQueryFactoryMethodCreator.load(factoryAlias)
@@ -301,8 +291,7 @@ public class QuerydslProcessor {
                         .setModifiers(Opcodes.ACC_MODULE);
 
                 registerCustomTypeCreator.addAnnotation(Inject.class);
-                registerCustomTypeCreator
-                        .addAnnotation(AnnotationInstance.create(DotNames.NAMED, null, new AnnotationValue[] {
+                registerCustomTypeCreator.addAnnotation(AnnotationInstance.create(DotNames.NAMED, null, new AnnotationValue[] {
                                 AnnotationValue.createStringValue("value", registerCustomTypeInjectName) }));
 
                 ResultHandle registerCustomTypeRH = namedQueryFactoryMethodCreator
@@ -313,7 +302,7 @@ public class QuerydslProcessor {
 
                 namedQueryFactoryMethodCreator.returnValue(namedQueryFactoryMethodCreator.invokeVirtualMethod(
                         MethodDescriptor.ofMethod(AbstractQueryFactoryProducer.class, "createQueryFactory",
-                                QueryFactoryWrapper.class, String.class, AgroalDataSource.class,
+                                QueryFactoryWrapper.class, String.class, DataSource.class,
                                 QuerydslCustomTypeRegister.class, String.class),
                         namedQueryFactoryMethodCreator.getThis(), templateRH, dataSourceRH, registerCustomTypeRH,
                         factoryAliasRH));
@@ -330,7 +319,7 @@ public class QuerydslProcessor {
 
                 namedQueryFactoryMethodCreator.returnValue(namedQueryFactoryMethodCreator.invokeVirtualMethod(
                         MethodDescriptor.ofMethod(AbstractQueryFactoryProducer.class, "createQueryFactory",
-                                QueryFactoryWrapper.class, String.class, AgroalDataSource.class, String.class,
+                                QueryFactoryWrapper.class, String.class, DataSource.class, String.class,
                                 String.class),
                         namedQueryFactoryMethodCreator.getThis(), templateRH, dataSourceRH, registerCustomTypeRH,
                         factoryAliasRH));

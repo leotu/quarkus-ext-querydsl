@@ -29,7 +29,7 @@ import com.querydsl.sql.teradata.TeradataQueryFactory;
 
 /**
  * 
- * @author <a href="mailto:leo.tu.taipei@gmail.com">Leo Tu</a>
+ * @author Leo Tu
  */
 public class QueryFactoryCreator {
 

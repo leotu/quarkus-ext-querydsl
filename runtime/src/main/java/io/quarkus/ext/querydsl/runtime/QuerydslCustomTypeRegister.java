@@ -21,7 +21,7 @@ import com.querydsl.sql.types.UtilDateType;
 /**
  * Register custom type
  * 
- * @author <a href="mailto:leo.tu.taipei@gmail.com">Leo Tu</a>
+ * @author Leo Tu
  */
 public interface QuerydslCustomTypeRegister {
 
@@ -29,16 +29,16 @@ public interface QuerydslCustomTypeRegister {
      * @see com.querydsl.sql.JDBCTypeMapping
      */
     default public void register(Configuration configuration) {
-        // XXX: columnType == 1111 && typeName.equalsIgnoreCase("NVARCHAR2") // Oracle
-        configuration.register(new StringType(java.sql.Types.OTHER)); // XXX
-        configuration.register(new BytesType(java.sql.Types.BLOB)); // XXX
-        configuration.register(new StringType(java.sql.Types.CLOB)); // XXX
+        // columnType == 1111 && typeName.equalsIgnoreCase("NVARCHAR2") // Oracle
+        configuration.register(new StringType(java.sql.Types.OTHER));
+        configuration.register(new BytesType(java.sql.Types.BLOB));
+        configuration.register(new StringType(java.sql.Types.CLOB));
 
-        configuration.register(new JavaUtilDateType(java.sql.Types.DATE)); // XXX
-        configuration.register(new JavaUtilDateType(java.sql.Types.TIMESTAMP)); // XXX
-        configuration.register(new JavaUtilDateType(java.sql.Types.TIME)); // XXX
+        configuration.register(new JavaUtilDateType(java.sql.Types.DATE));
+        configuration.register(new JavaUtilDateType(java.sql.Types.TIMESTAMP));
+        configuration.register(new JavaUtilDateType(java.sql.Types.TIME));
 
-        // XXX: PostgreqSQL
+        // PostgreqSQL
         configuration.registerType("int2", Short.class);
         configuration.registerType("int4", Integer.class);
         configuration.registerType("int8", Long.class);
@@ -48,19 +48,14 @@ public interface QuerydslCustomTypeRegister {
         configuration.registerNumeric(2, 0, java.lang.Short.class);
         configuration.registerNumeric(1, 19, 1, 12, java.math.BigDecimal.class);
 
-        configuration.registerNumeric(10, 19, 0, 0, Long.class); // XXX: int(10,0) ~ int(19,0)
+        configuration.registerNumeric(10, 19, 0, 0, Long.class); // int(10,0) ~ int(19,0)
 
         // ===
         configuration.register(new BigDecimalTypeExt(Types.DECIMAL));
         configuration.register(new BigDecimalTypeExt(Types.NUMERIC));
 
-        // override JDBCTypeMapping.registerDefault(Types.DOUBLE,Double.class)
         configuration.register(new BigDecimalTypeExt(Types.DOUBLE));
-
-        // override DBCTypeMapping.registerDefault(Types.FLOAT,Float.class)
         configuration.register(new BigDecimalTypeExt(Types.FLOAT));
-
-        // override DBCTypeMapping.registerDefault(Types.REAL,Float.class)
         configuration.register(new BigDecimalTypeExt(Types.REAL));
 
         // override DBCTypeMapping.registerDefault(Types.DATE,java.sql.Date.class)

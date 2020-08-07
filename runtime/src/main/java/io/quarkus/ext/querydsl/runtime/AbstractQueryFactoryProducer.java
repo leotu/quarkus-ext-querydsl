@@ -8,20 +8,19 @@ import java.lang.annotation.Target;
 import java.util.Objects;
 
 import javax.inject.Qualifier;
+import javax.sql.DataSource;
 
 import org.jboss.logging.Logger;
-
-import io.agroal.api.AgroalDataSource;
 
 /**
  * Produces QueryFactory
  * 
- * @author <a href="mailto:leo.tu.taipei@gmail.com">Leo Tu</a>
+ * @author Leo Tu
  */
 public abstract class AbstractQueryFactoryProducer {
     private static final Logger log = Logger.getLogger(AbstractQueryFactoryProducer.class);
 
-    public QueryFactoryWrapper<?, ?> createQueryFactory(String sqlTemplates, AgroalDataSource dataSource,
+    public QueryFactoryWrapper<?, ?> createQueryFactory(String sqlTemplates, DataSource dataSource,
             String registerCustomType, String factoryAlias) {
         Objects.requireNonNull(sqlTemplates, "sqlTemplates");
         Objects.requireNonNull(dataSource, "dataSource");
@@ -36,7 +35,7 @@ public abstract class AbstractQueryFactoryProducer {
             }
             try {
                 Class<?> clazz = cl.loadClass(registerCustomType);
-                QuerydslCustomTypeRegister instance = (QuerydslCustomTypeRegister) clazz.newInstance();
+                QuerydslCustomTypeRegister instance = (QuerydslCustomTypeRegister) clazz.getDeclaredConstructor().newInstance();
                 return createQueryFactory(sqlTemplates, dataSource, instance, factoryAlias);
             } catch (Exception e) {
                 log.error(registerCustomType, e);
@@ -45,7 +44,7 @@ public abstract class AbstractQueryFactoryProducer {
         }
     }
 
-    public QueryFactoryWrapper<?, ?> createQueryFactory(String sqlTemplates, AgroalDataSource dataSource,
+    public QueryFactoryWrapper<?, ?> createQueryFactory(String sqlTemplates, DataSource dataSource,
             QuerydslCustomTypeRegister registerCustomType, String factoryAlias) {
         Objects.requireNonNull(sqlTemplates, "sqlTemplates");
         Objects.requireNonNull(dataSource, "dataSource");

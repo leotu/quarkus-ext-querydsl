@@ -4,6 +4,7 @@ import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Produces;
 import javax.inject.Named;
+import javax.inject.Singleton;
 
 import org.jboss.logging.Logger;
 
@@ -11,10 +12,10 @@ import io.quarkus.ext.querydsl.runtime.QuerydslCustomTypeRegister;
 
 /**
  * 
- * @author <a href="mailto:leo.tu.taipei@gmail.com">Leo Tu</a>
+ * @author Leo Tu
  */
-@ApplicationScoped
-//@Singleton
+//@ApplicationScoped
+@Singleton
 public class MyCustomTypeRegisterFactory {
     private static final Logger LOGGER = Logger.getLogger(MyCustomTypeRegisterFactory.class);
 

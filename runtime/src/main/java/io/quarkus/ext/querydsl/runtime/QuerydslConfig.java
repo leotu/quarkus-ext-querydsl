@@ -9,7 +9,7 @@ import io.quarkus.runtime.annotations.ConfigRoot;
 /**
  * Read from application.properties file
  * 
- * @author <a href="mailto:leo.tu.taipei@gmail.com">Leo Tu</a>
+ * @author Leo Tu
  *
  */
 @ConfigRoot(name = "querydsl", phase = ConfigPhase.BUILD_TIME)

@@ -7,7 +7,7 @@ import io.quarkus.runtime.annotations.ConfigItem;
 
 /**
  * 
- * @author <a href="mailto:leo.tu.taipei@gmail.com">Leo Tu</a>
+ * @author Leo Tu
  */
 @ConfigGroup
 public class QueryFactoryItemConfig {

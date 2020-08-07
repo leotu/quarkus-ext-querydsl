@@ -2,13 +2,13 @@ package io.quarkus.ext.querydsl;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
 
 /**
  * 
- * @author <a href="mailto:leo.tu.taipei@gmail.com">Leo Tu</a>
+ * @author Leo Tu
  */
 @SuppressWarnings("serial")
 @RegisterForReflection
@@ -17,7 +17,7 @@ public class Demo implements Serializable {
     private String id;
     private String name;
     private BigDecimal amount;
-    private Date createdAt;
+    private LocalDateTime createdAt;
 
     public String getId() {
         return id;
@@ -43,11 +43,11 @@ public class Demo implements Serializable {
         this.amount = amount;
     }
 
-    public Date getCreatedAt() {
+    public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(Date createdAt) {
+    public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
 

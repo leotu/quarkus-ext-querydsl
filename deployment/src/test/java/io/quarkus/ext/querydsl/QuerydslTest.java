@@ -5,7 +5,7 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -25,6 +25,7 @@ import org.jboss.shrinkwrap.api.spec.JavaArchive;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -37,9 +38,9 @@ import io.quarkus.test.QuarkusUnitTest;
 
 /**
  * 
- * @author <a href="mailto:leo.tu.taipei@gmail.com">Leo Tu</a>
+ * @author Leo Tu
  */
-//@Disabled
+@Disabled
 public class QuerydslTest {
     private static final Logger LOGGER = Logger.getLogger(QuerydslTest.class);
 
@@ -65,25 +66,28 @@ public class QuerydslTest {
     @AfterAll
     static public void stopDatabase() {
         LOGGER.debug("Stop H2 server..." + server);
+        try {
+            Thread.sleep(1000 * 1); // waiting for destroy
+        } catch (Exception e) {
+            LOGGER.warn(e.toString());
+        }
         if (server != null) {
             server.stop();
             server = null;
         }
-        // while (true) { // only for GUI tool to view data
-        // try {
-        // Thread.sleep(100);
-        // } catch (InterruptedException e) {
-        // e.printStackTrace();
-        // }
-        // }
     }
 
     @Order(10)
     @RegisterExtension
-    static final QuarkusUnitTest config = new QuarkusUnitTest() //
-            .setArchiveProducer(() -> ShrinkWrap.create(JavaArchive.class) //
-                    .addAsResource("application.properties", "application.properties") //
-                    .addClasses(TestBean.class, MyCustomTypeRegisterFactory.class));
+    static final QuarkusUnitTest config = new QuarkusUnitTest()
+            .setArchiveProducer(() -> ShrinkWrap.create(JavaArchive.class)
+                    .addAsResource("application.properties", "application.properties")
+                    //.addAsResource("application-legacy.properties", "application.properties")
+                    .addClasses(TestBean.class,
+                            MyCustomTypeRegisterFactory.class,
+                            MyCustomTypeRegister1.class,
+                            DSLFactory.class, DSLFactory2.class,
+                            QDemo.class, Demo.class));
 
     @Inject
     TestBean testBean;
@@ -99,8 +103,12 @@ public class QuerydslTest {
     // }
 
     @Test
-    public void test1() {
-        LOGGER.info("BEGIN test1...");
+    public void testEntry() {
+        LOGGER.info("BEGIN...");
+        if (testBean == null) {
+            LOGGER.error("Inject testBean is null !");
+            return;
+        }
         try {
             testBean.testConnection();
             //
@@ -118,7 +126,7 @@ public class QuerydslTest {
         } catch (Exception e) {
             LOGGER.error("", e);
         } finally {
-            LOGGER.info("END test1.");
+            LOGGER.info("END.");
         }
     }
 
@@ -126,7 +134,8 @@ public class QuerydslTest {
     static class TestBean {
 
         @Inject
-        DSLFactory queryFactory; // default + factory alias
+        //DSLFactory queryFactory; // default + factory alias
+        SQLFactory queryFactory; // default
 
         @Inject
         @Named("qf1")
@@ -155,8 +164,8 @@ public class QuerydslTest {
          */
         void onStart(@Observes StartupEvent event) {
             LOGGER.debug("onStart, event=" + event);
-            action = new ServiceAction(queryFactory, "name00", 10);
-            action1 = new ServiceAction(queryFactory1, "name11", 15);
+            action = new ServiceAction(queryFactory, "action", 10);
+            action1 = new ServiceAction(queryFactory1, "action1", 15);
         }
 
         void onStop(@Observes ShutdownEvent event) {
@@ -306,7 +315,6 @@ public class QuerydslTest {
             testDelete1();
             testCount1();
         }
-
     }
 
     static class ServiceAction {
@@ -329,14 +337,15 @@ public class QuerydslTest {
 
         void createDDL() throws Exception {
             String table = QDemo.$.getTableName();
-            String ddl = "" + //
-                    "CREATE TABLE " + table + "(" + //
-                    " id char(32) NOT NULL," + //
-                    " name varchar(128) NOT NULL," + //
-                    " amount decimal(12,3) ," + //
-                    " created_at timestamp NOT NULL," + //
-                    " PRIMARY KEY (id)" + //
+            String ddl = "CREATE TABLE " + table + "(" +
+                    " id char(32) NOT NULL," +
+                    " name varchar(128) NOT NULL," +
+                    " amount decimal(12,3) ," +
+                    " created_at timestamp NOT NULL," +
+                    " PRIMARY KEY (id)" +
                     ")";
+            
+            LOGGER.infov("ddl: {0}", ddl);
 
             try (Connection conn = queryFactory.getConnection()) {
                 Statement stmt = conn.createStatement();
@@ -358,7 +367,7 @@ public class QuerydslTest {
                     }
                 }
 
-                LOGGER.debugv("createDDL table: {0} success: {1}", table, tableExists);
+                LOGGER.infov("createDDL table: {0} success: {1}", table, tableExists);
                 rs.close();
                 Assertions.assertTrue(tableExists);
             }
@@ -383,52 +392,50 @@ public class QuerydslTest {
             for (int i = 0; i < loop; i++) {
                 String id = UUID.randomUUID().toString().replaceAll("-", "");
                 int randomNum = ThreadLocalRandom.current().nextInt(0, 9);
-                long row = queryFactory.insert(QDemo.$) //
-                        .set(QDemo.$.id, id) //
-                        .set(QDemo.$.name, prefix + "-" + i) //
-                        .set(QDemo.$.amount, new BigDecimal(12.1 + randomNum)) //
-                        .set(QDemo.$.createdAt, new Date()).execute();
+                long row = queryFactory.insert(QDemo.$)
+                        .set(QDemo.$.id, id)
+                        .set(QDemo.$.name, prefix + "-" + i)
+                        .set(QDemo.$.amount, new BigDecimal(12.1 + randomNum))
+                        .set(QDemo.$.createdAt, LocalDateTime.now()).execute();
                 LOGGER.debugv("insertData prefix: {0}, i: {1}, row: {2}", prefix, i, row);
                 Assertions.assertEquals(1, row);
             }
         }
 
         void updateData() throws Exception {
-            long row = queryFactory.update(QDemo.$) //
-                    .set(QDemo.$.name, prefix + "-" + "5U") //
-                    .set(QDemo.$.createdAt, new Date()) //
-                    .where(QDemo.$.name.eq(prefix + "-" + 5)) //
+            long row = queryFactory.update(QDemo.$)
+                    .set(QDemo.$.name, prefix + "-" + "5U")
+                    .set(QDemo.$.createdAt, LocalDateTime.now())
+                    .where(QDemo.$.name.eq(prefix + "-" + 5))
                     .execute();
             LOGGER.debugv("updateData prefix: {0}, row: {1}", prefix, row);
             Assertions.assertEquals(1, row);
         }
 
         void queryData() throws Exception {
-            List<Demo> dataList = queryFactory.select(QDemo.$) //
-                    .from(QDemo.$) //
+            List<Demo> dataList = queryFactory.select(QDemo.$)
+                    .from(QDemo.$)
                     .fetch();
 
             LOGGER.debugv("queryData prefix: {0}, dataList.size: {1}", prefix, dataList.size());
             Assertions.assertTrue(dataList.size() == loop);
 
-            Demo data = queryFactory.select(QDemo.$) //
-                    .from(QDemo.$) //
-                    .where(QDemo.$.name.eq(prefix + "-" + "5U")) //
+            Demo data = queryFactory.select(QDemo.$)
+                    .from(QDemo.$)
+                    .where(QDemo.$.name.eq(prefix + "-" + "5U"))
                     .fetchOne();
             LOGGER.debugv("queryData prefix: {0}, data: {1}", prefix, data);
             Assertions.assertTrue(data != null);
         }
 
         void deleteData() throws Exception {
-            LOGGER.debug("deleteData...");
-            long row = queryFactory.delete(QDemo.$) //
+            long row = queryFactory.delete(QDemo.$)
                     .execute();
             LOGGER.debugv("deleteData prefix: {0}, row: {1}", prefix, row);
             Assertions.assertTrue(row == loop);
         }
 
         void countData() throws Exception {
-            LOGGER.debug("countData...");
             long total = queryFactory.selectOne().from(QDemo.$).fetchCount();
             LOGGER.debugv("countData prefix: {0}, total: {1}", prefix, total);
             Assertions.assertTrue(total == 0);

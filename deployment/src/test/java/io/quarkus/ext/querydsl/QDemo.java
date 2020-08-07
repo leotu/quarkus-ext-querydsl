@@ -4,6 +4,7 @@ import static com.querydsl.core.types.PathMetadataFactory.forVariable;
 
 import java.math.BigDecimal;
 import java.sql.Types;
+import java.time.LocalDateTime;
 
 import com.querydsl.core.types.dsl.DateTimePath;
 import com.querydsl.core.types.dsl.NumberPath;
@@ -13,7 +14,7 @@ import com.querydsl.sql.RelationalPathBase;
 
 /**
  * 
- * @author <a href="mailto:leo.tu.taipei@gmail.com">Leo Tu</a>
+ * @author Leo Tu
  */
 @SuppressWarnings("serial")
 public class QDemo extends RelationalPathBase<Demo> {
@@ -23,7 +24,7 @@ public class QDemo extends RelationalPathBase<Demo> {
     public final StringPath id = createString("id");
     public final StringPath name = createString("name");
     public final NumberPath<BigDecimal> amount = createNumber("amount", BigDecimal.class);
-    public final DateTimePath<java.util.Date> createdAt = createDateTime("createdAt", java.util.Date.class);
+    public final DateTimePath<LocalDateTime> createdAt = createDateTime("createdAt", LocalDateTime.class);
 
     protected QDemo(String table) {
         super(Demo.class, forVariable(table), "public", table);

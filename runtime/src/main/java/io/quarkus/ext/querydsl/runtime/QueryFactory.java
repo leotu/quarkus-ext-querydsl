@@ -3,6 +3,8 @@ package io.quarkus.ext.querydsl.runtime;
 import java.util.Objects;
 import java.util.Optional;
 
+import javax.sql.DataSource;
+
 import org.jboss.logging.Logger;
 
 import com.querydsl.sql.AbstractSQLQuery;
@@ -36,12 +38,10 @@ import com.querydsl.sql.postgresql.PostgreSQLQueryFactory;
 import com.querydsl.sql.teradata.TeradataQuery;
 import com.querydsl.sql.teradata.TeradataQueryFactory;
 
-import io.agroal.api.AgroalDataSource;
-
 /**
  * Fix Quarkus cannot override final method and register custom type
  * 
- * @author <a href="mailto:leo.tu.taipei@gmail.com">Leo Tu</a>
+ * @author Leo Tu
  */
 public class QueryFactory {
     private static final Logger log = Logger.getLogger(QueryFactory.class);
@@ -112,13 +112,14 @@ public class QueryFactory {
         }
     }
 
-    static public QueryFactoryWrapper<?, ?> create(String sqlTemplates, AgroalDataSource dataSource,
+    static public QueryFactoryWrapper<?, ?> create(String sqlTemplates, DataSource dataSource,
             QuerydslCustomTypeRegister customTypeRegister, String factoryAlias) {
         Objects.requireNonNull(dataSource, "dataSource");
         Objects.requireNonNull(customTypeRegister, "customTypeRegister");
 
         QueryFactoryWrapper<?, ?> queryFactory;
-        if ("PostgreSQL".equalsIgnoreCase(sqlTemplates) || "Postgres".equalsIgnoreCase(sqlTemplates)) {
+        if ("PostgreSQL".equalsIgnoreCase(sqlTemplates) || "Postgres".equalsIgnoreCase(sqlTemplates)
+                || "PgSQL".equalsIgnoreCase(sqlTemplates) || "PG".equalsIgnoreCase(sqlTemplates)) {
             SQLTemplates templates = PostgreSQLTemplates.builder().build();
             Configuration configuration = new Configuration(templates);
             PostgreSQLQueryFactory qf = new QueryFactoryCreator.PostgreSQLQueryFactoryExt(configuration,
@@ -136,7 +137,7 @@ public class QueryFactory {
             OracleQueryFactory qf = new QueryFactoryCreator.OracleQueryFactoryExt(configuration,
                     new ConnectionProvider(dataSource));
             queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new OracleFactory(qf));
-        } else if ("SQLServer".equalsIgnoreCase(sqlTemplates)) {
+        } else if ("SQLServer".equalsIgnoreCase(sqlTemplates) || "MSSQL".equalsIgnoreCase(sqlTemplates)) {
             SQLTemplates templates = SQLServerTemplates.builder().build();
             Configuration configuration = new Configuration(templates);
             SQLServerQueryFactory qf = new QueryFactoryCreator.SQLServerQueryFactoryExt(configuration,
@@ -216,13 +217,14 @@ public class QueryFactory {
     static public <Q extends AbstractSQLQuery<?, ?>, F extends AbstractSQLQueryFactory<Q>> Class<? extends QueryFactoryWrapper<?, ?>> getQueryFactoryType(
             String sqlTemplates, String factoryAlias) {
         Optional<Class<? extends QueryFactoryWrapper<Q, F>>> factoryAliasClass = getFactoryAliasClass(factoryAlias);
-        if ("PostgreSQL".equalsIgnoreCase(sqlTemplates) || "Postgres".equalsIgnoreCase(sqlTemplates)) {
+        if ("PostgreSQL".equalsIgnoreCase(sqlTemplates) || "Postgres".equalsIgnoreCase(sqlTemplates)
+                || "PgSQL".equalsIgnoreCase(sqlTemplates) || "PG".equalsIgnoreCase(sqlTemplates)) {
             return factoryAliasClass.isPresent() ? factoryAliasClass.get() : PostgreSQLFactory.class;
         } else if ("MySQL".equalsIgnoreCase(sqlTemplates)) {
             return factoryAliasClass.isPresent() ? factoryAliasClass.get() : MySQLFactory.class;
         } else if ("Oracle".equalsIgnoreCase(sqlTemplates)) {
             return factoryAliasClass.isPresent() ? factoryAliasClass.get() : OracleFactory.class;
-        } else if ("SQLServer".equalsIgnoreCase(sqlTemplates)) {
+        } else if ("SQLServer".equalsIgnoreCase(sqlTemplates) || "MSSQL".equalsIgnoreCase(sqlTemplates)) {
             return factoryAliasClass.isPresent() ? factoryAliasClass.get() : SQLServerFactory.class;
         } else if ("SQLServer2005".equalsIgnoreCase(sqlTemplates)) {
             return factoryAliasClass.isPresent() ? factoryAliasClass.get() : SQLServerFactory.class;
@@ -277,7 +279,7 @@ public class QueryFactory {
         QueryFactoryWrapper<Q, F> factoryInstance = null;
         try {
             if (factoryAliasClass.isPresent()) {
-                factoryInstance = factoryAliasClass.get().newInstance();
+                factoryInstance = factoryAliasClass.get().getDeclaredConstructor().newInstance();
                 factoryInstance.setDelegate(qf);
             }
         } catch (Exception e) {

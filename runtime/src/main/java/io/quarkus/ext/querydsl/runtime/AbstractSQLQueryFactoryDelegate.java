@@ -25,7 +25,7 @@ import com.querydsl.sql.dml.SQLUpdateClause;
 /**
  * Show SQL commands
  * 
- * @author <a href="mailto:leo.tu.taipei@gmail.com">Leo Tu</a>
+ * @author Leo Tu
  */
 public abstract class AbstractSQLQueryFactoryDelegate implements QueryFactoryWithLog {
 
@@ -102,7 +102,7 @@ public abstract class AbstractSQLQueryFactoryDelegate implements QueryFactoryWit
         }
         try {
             Field field = clsObj.getDeclaredField(fieldName);
-            boolean keepStatus = field.isAccessible();
+            boolean keepStatus = field.canAccess(reflectObj);
             if (!keepStatus) {
                 field.setAccessible(true);
             }

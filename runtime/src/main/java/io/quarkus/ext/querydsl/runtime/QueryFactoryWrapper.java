@@ -18,7 +18,7 @@ import com.querydsl.sql.dml.SQLUpdateClause;
 
 /**
  * 
- * @author <a href="mailto:leo.tu.taipei@gmail.com">Leo Tu</a>
+ * @author Leo Tu
  */
 public class QueryFactoryWrapper<Q extends AbstractSQLQuery<?, ?>, F extends AbstractSQLQueryFactory<Q>>
         implements SQLCommonQueryFactory<Q, SQLDeleteClause, SQLUpdateClause, SQLInsertClause, SQLMergeClause> {
