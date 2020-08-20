@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 /**
+ * VM arguments add "-Djava.util.logging.manager=org.jboss.logmanager.LogManager"
  * 
  * @author Leo Tu
  */

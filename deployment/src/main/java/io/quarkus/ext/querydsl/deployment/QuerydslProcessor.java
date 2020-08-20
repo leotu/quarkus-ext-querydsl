@@ -89,8 +89,8 @@ public class QuerydslProcessor {
     BeanContainerListenerBuildItem build(RecorderContext recorder, QuerydslTemplate template,
             BuildProducer<ReflectiveClassBuildItem> reflectiveClass,
             BuildProducer<UnremovableBeanBuildItem> unremovableBeans, QuerydslConfig querydslConfig,
-            BuildProducer<GeneratedBeanBuildItem> generatedBean, List<JdbcDataSourceBuildItem> jdbcDataSourceBuildItems) {
-
+            BuildProducer<GeneratedBeanBuildItem> generatedBean,
+            List<JdbcDataSourceBuildItem> jdbcDataSourceBuildItems) {
         if (isUnconfigured(querydslConfig)) {
             return null;
         }
@@ -130,7 +130,6 @@ public class QuerydslProcessor {
     private void createQueryFactoryProducerBean(BuildProducer<GeneratedBeanBuildItem> generatedBean,
             BuildProducer<UnremovableBeanBuildItem> unremovableBeans, QuerydslConfig querydslConfig,
             List<JdbcDataSourceBuildItem> jdbcDataSourceBuildItems) {
-
         ClassOutput classOutput = new ClassOutput() {
             @Override
             public void write(String name, byte[] data) {

@@ -37,6 +37,7 @@ import io.quarkus.runtime.StartupEvent;
 import io.quarkus.test.QuarkusUnitTest;
 
 /**
+ * VM arguments add "-Djava.util.logging.manager=org.jboss.logmanager.LogManager"
  * 
  * @author Leo Tu
  */
@@ -134,8 +135,8 @@ public class QuerydslTest {
     static class TestBean {
 
         @Inject
-        //DSLFactory queryFactory; // default + factory alias
-        SQLFactory queryFactory; // default
+        DSLFactory queryFactory; // default + factory alias
+        //SQLFactory queryFactory; // default
 
         @Inject
         @Named("qf1")
