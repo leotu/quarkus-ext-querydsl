@@ -1,21 +1,32 @@
 package io.quarkus.ext.querydsl.runtime;
 
-import java.sql.Connection;
-import java.util.Collection;
-import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
-import javax.inject.Provider;
+import javax.sql.DataSource;
+
+import org.jboss.logging.Logger;
 
 import com.querydsl.sql.AbstractSQLQuery;
+import com.querydsl.sql.AbstractSQLQueryFactory;
+import com.querydsl.sql.CUBRIDTemplates;
 import com.querydsl.sql.Configuration;
-import com.querydsl.sql.RelationalPath;
+import com.querydsl.sql.DB2Templates;
+import com.querydsl.sql.DerbyTemplates;
+import com.querydsl.sql.FirebirdTemplates;
+import com.querydsl.sql.H2Templates;
+import com.querydsl.sql.HSQLDBTemplates;
+import com.querydsl.sql.MySQLTemplates;
+import com.querydsl.sql.OracleTemplates;
+import com.querydsl.sql.PostgreSQLTemplates;
 import com.querydsl.sql.SQLQuery;
 import com.querydsl.sql.SQLQueryFactory;
+import com.querydsl.sql.SQLServer2005Templates;
+import com.querydsl.sql.SQLServer2012Templates;
+import com.querydsl.sql.SQLServerTemplates;
 import com.querydsl.sql.SQLTemplates;
-import com.querydsl.sql.dml.SQLDeleteClause;
-import com.querydsl.sql.dml.SQLInsertClause;
-import com.querydsl.sql.dml.SQLMergeClause;
-import com.querydsl.sql.dml.SQLUpdateClause;
+import com.querydsl.sql.SQLiteTemplates;
+import com.querydsl.sql.TeradataTemplates;
 import com.querydsl.sql.mssql.SQLServerQuery;
 import com.querydsl.sql.mssql.SQLServerQueryFactory;
 import com.querydsl.sql.mysql.MySQLQuery;
@@ -28,392 +39,239 @@ import com.querydsl.sql.teradata.TeradataQuery;
 import com.querydsl.sql.teradata.TeradataQueryFactory;
 
 /**
+ * Fix Quarkus cannot override final method and register custom type
  * 
  * @author Leo Tu
  */
 public class QueryFactoryCreator {
+    private static final Logger log = Logger.getLogger(QueryFactoryCreator.class);
 
-    static public class PostgreSQLQueryFactoryExt extends PostgreSQLQueryFactory implements QueryFactoryWithLog {
+    static public class PostgreSQLFactory extends QueryFactory<PostgreSQLQuery<?>, PostgreSQLQueryFactory> {
 
-        final private AbstractSQLQueryFactoryDelegate delegateWithLog;
-
-        public PostgreSQLQueryFactoryExt(Configuration configuration, Provider<Connection> connProvider) {
-            super(configuration, connProvider);
-            this.delegateWithLog = init(connProvider);
+        public PostgreSQLFactory() {
+            super(null);
         }
 
-        public PostgreSQLQueryFactoryExt(SQLTemplates templates, Provider<Connection> connProvider) {
-            super(templates, connProvider);
-            this.delegateWithLog = init(connProvider);
-        }
-
-        private AbstractSQLQueryFactoryDelegate init(Provider<Connection> connProvider) {
-            return new AbstractSQLQueryFactoryDelegate(this) {
-
-                @SuppressWarnings("serial")
-                @Override
-                public AbstractSQLQuery<?, ?> queryWithLog() {
-                    return new PostgreSQLQuery<Void>(connProvider, PostgreSQLQueryFactoryExt.this.getConfiguration()) {
-                        @Override
-                        protected void logQuery(String queryString, Collection<Object> parameters) {
-                            if (sqlLog.isTraceEnabled()) {
-                                sqlLog.debug(delegateWithLog.toSql(configuration, queryString,
-                                        (List<Object>) parameters, getMetadata().getParams()));
-                            }
-                        }
-                    };
-                }
-            };
-        }
-
-        @Override
-        public PostgreSQLQuery<?> query() {
-            return queryWithLog();
-        }
-
-        @Override
-        public PostgreSQLQuery<?> queryWithLog() {
-            return (PostgreSQLQuery<?>) delegateWithLog.queryWithLog();
-        }
-
-        @Override
-        public final SQLDeleteClause deleteWithLog(RelationalPath<?> path) {
-            return delegateWithLog.deleteWithLog(path);
-        }
-
-        @Override
-        public final SQLUpdateClause updateWithLog(RelationalPath<?> path) {
-            return delegateWithLog.updateWithLog(path);
-        }
-
-        @Override
-        public final SQLInsertClause insertWithLog(RelationalPath<?> path) {
-            return delegateWithLog.insertWithLog(path);
-        }
-
-        @Override
-        public final SQLMergeClause mergeWithLog(RelationalPath<?> path) {
-            return delegateWithLog.mergeWithLog(path);
+        public PostgreSQLFactory(PostgreSQLQueryFactory delegate) {
+            super(delegate);
         }
     }
 
-    static public class OracleQueryFactoryExt extends OracleQueryFactory implements QueryFactoryWithLog {
+    static public class MySQLFactory extends QueryFactory<MySQLQuery<?>, MySQLQueryFactory> {
 
-        final private AbstractSQLQueryFactoryDelegate delegateWithLog;
-
-        public OracleQueryFactoryExt(Configuration configuration, Provider<Connection> connProvider) {
-            super(configuration, connProvider);
-            this.delegateWithLog = init(connProvider);
+        public MySQLFactory() {
+            super(null);
         }
 
-        public OracleQueryFactoryExt(SQLTemplates templates, Provider<Connection> connProvider) {
-            super(templates, connProvider);
-            this.delegateWithLog = init(connProvider);
-        }
-
-        private AbstractSQLQueryFactoryDelegate init(Provider<Connection> connProvider) {
-            return new AbstractSQLQueryFactoryDelegate(this) {
-
-                @SuppressWarnings("serial")
-                @Override
-                public AbstractSQLQuery<?, ?> queryWithLog() {
-                    return new PostgreSQLQuery<Void>(connProvider, OracleQueryFactoryExt.this.getConfiguration()) {
-                        @Override
-                        protected void logQuery(String queryString, Collection<Object> parameters) {
-                            if (sqlLog.isTraceEnabled()) {
-                                sqlLog.debug(delegateWithLog.toSql(configuration, queryString,
-                                        (List<Object>) parameters, getMetadata().getParams()));
-                            }
-                        }
-                    };
-                }
-            };
-        }
-
-        @Override
-        public OracleQuery<?> query() {
-            return queryWithLog();
-        }
-
-        @Override
-        public OracleQuery<?> queryWithLog() {
-            return (OracleQuery<?>) delegateWithLog.queryWithLog();
-        }
-
-        @Override
-        public final SQLDeleteClause deleteWithLog(RelationalPath<?> path) {
-            return delegateWithLog.deleteWithLog(path);
-        }
-
-        @Override
-        public final SQLUpdateClause updateWithLog(RelationalPath<?> path) {
-            return delegateWithLog.updateWithLog(path);
-        }
-
-        @Override
-        public final SQLInsertClause insertWithLog(RelationalPath<?> path) {
-            return delegateWithLog.insertWithLog(path);
-        }
-
-        @Override
-        public final SQLMergeClause mergeWithLog(RelationalPath<?> path) {
-            return delegateWithLog.mergeWithLog(path);
+        public MySQLFactory(MySQLQueryFactory delegate) {
+            super(delegate);
         }
     }
 
-    static public class MySQLQueryFactoryExt extends MySQLQueryFactory implements QueryFactoryWithLog {
+    static public class OracleFactory extends QueryFactory<OracleQuery<?>, OracleQueryFactory> {
 
-        final private AbstractSQLQueryFactoryDelegate delegateWithLog;
-
-        public MySQLQueryFactoryExt(Configuration configuration, Provider<Connection> connProvider) {
-            super(configuration, connProvider);
-            this.delegateWithLog = init(connProvider);
+        public OracleFactory() {
+            super(null);
         }
 
-        public MySQLQueryFactoryExt(SQLTemplates templates, Provider<Connection> connProvider) {
-            super(templates, connProvider);
-            this.delegateWithLog = init(connProvider);
-        }
-
-        private AbstractSQLQueryFactoryDelegate init(Provider<Connection> connProvider) {
-            return new AbstractSQLQueryFactoryDelegate(this) {
-
-                @SuppressWarnings("serial")
-                @Override
-                public AbstractSQLQuery<?, ?> queryWithLog() {
-                    return new MySQLQuery<Void>(connProvider, MySQLQueryFactoryExt.this.getConfiguration()) {
-                        @Override
-                        protected void logQuery(String queryString, Collection<Object> parameters) {
-                            if (sqlLog.isTraceEnabled()) {
-                                sqlLog.debug(delegateWithLog.toSql(configuration, queryString,
-                                        (List<Object>) parameters, getMetadata().getParams()));
-                            }
-                        }
-                    };
-                }
-            };
-        }
-
-        @Override
-        public MySQLQuery<?> query() {
-            return queryWithLog();
-        }
-
-        @Override
-        public MySQLQuery<?> queryWithLog() {
-            return (MySQLQuery<?>) delegateWithLog.queryWithLog();
-        }
-
-        @Override
-        public final SQLDeleteClause deleteWithLog(RelationalPath<?> path) {
-            return delegateWithLog.deleteWithLog(path);
-        }
-
-        @Override
-        public final SQLUpdateClause updateWithLog(RelationalPath<?> path) {
-            return delegateWithLog.updateWithLog(path);
-        }
-
-        @Override
-        public final SQLInsertClause insertWithLog(RelationalPath<?> path) {
-            return delegateWithLog.insertWithLog(path);
-        }
-
-        @Override
-        public final SQLMergeClause mergeWithLog(RelationalPath<?> path) {
-            return delegateWithLog.mergeWithLog(path);
+        public OracleFactory(OracleQueryFactory delegate) {
+            super(delegate);
         }
     }
 
-    static public class SQLServerQueryFactoryExt extends SQLServerQueryFactory implements QueryFactoryWithLog {
+    static public class SQLServerFactory extends QueryFactory<SQLServerQuery<?>, SQLServerQueryFactory> {
 
-        final private AbstractSQLQueryFactoryDelegate delegateWithLog;
-
-        public SQLServerQueryFactoryExt(Configuration configuration, Provider<Connection> connProvider) {
-            super(configuration, connProvider);
-            this.delegateWithLog = init(connProvider);
+        public SQLServerFactory() {
+            super(null);
         }
 
-        public SQLServerQueryFactoryExt(SQLTemplates templates, Provider<Connection> connProvider) {
-            super(templates, connProvider);
-            this.delegateWithLog = init(connProvider);
-        }
-
-        private AbstractSQLQueryFactoryDelegate init(Provider<Connection> connProvider) {
-            return new AbstractSQLQueryFactoryDelegate(this) {
-
-                @SuppressWarnings("serial")
-                @Override
-                public AbstractSQLQuery<?, ?> queryWithLog() {
-                    return new MySQLQuery<Void>(connProvider, SQLServerQueryFactoryExt.this.getConfiguration()) {
-                        @Override
-                        protected void logQuery(String queryString, Collection<Object> parameters) {
-                            if (sqlLog.isTraceEnabled()) {
-                                sqlLog.debug(delegateWithLog.toSql(configuration, queryString,
-                                        (List<Object>) parameters, getMetadata().getParams()));
-                            }
-                        }
-                    };
-                }
-            };
-        }
-
-        @Override
-        public SQLServerQuery<?> query() {
-            return queryWithLog();
-        }
-
-        @Override
-        public SQLServerQuery<?> queryWithLog() {
-            return (SQLServerQuery<?>) delegateWithLog.queryWithLog();
-        }
-
-        @Override
-        public final SQLDeleteClause deleteWithLog(RelationalPath<?> path) {
-            return delegateWithLog.deleteWithLog(path);
-        }
-
-        @Override
-        public final SQLUpdateClause updateWithLog(RelationalPath<?> path) {
-            return delegateWithLog.updateWithLog(path);
-        }
-
-        @Override
-        public final SQLInsertClause insertWithLog(RelationalPath<?> path) {
-            return delegateWithLog.insertWithLog(path);
-        }
-
-        @Override
-        public final SQLMergeClause mergeWithLog(RelationalPath<?> path) {
-            return delegateWithLog.mergeWithLog(path);
+        public SQLServerFactory(SQLServerQueryFactory delegate) {
+            super(delegate);
         }
     }
 
-    static public class SQLQueryFactoryExt extends SQLQueryFactory implements QueryFactoryWithLog {
+    static public class SQLFactory extends QueryFactory<SQLQuery<?>, SQLQueryFactory> {
 
-        final private AbstractSQLQueryFactoryDelegate delegateWithLog;
-
-        public SQLQueryFactoryExt(Configuration configuration, Provider<Connection> connProvider) {
-            super(configuration, connProvider);
-            this.delegateWithLog = init(connProvider);
+        public SQLFactory() {
+            super(null);
         }
 
-        public SQLQueryFactoryExt(SQLTemplates templates, Provider<Connection> connProvider) {
-            super(templates, connProvider);
-            this.delegateWithLog = init(connProvider);
-        }
-
-        private AbstractSQLQueryFactoryDelegate init(Provider<Connection> connProvider) {
-            return new AbstractSQLQueryFactoryDelegate(this) {
-
-                @SuppressWarnings("serial")
-                @Override
-                public AbstractSQLQuery<?, ?> queryWithLog() {
-                    return new SQLQuery<Void>(connProvider, SQLQueryFactoryExt.this.getConfiguration()) {
-                        @Override
-                        protected void logQuery(String queryString, Collection<Object> parameters) {
-                            if (sqlLog.isTraceEnabled()) {
-                                sqlLog.debug(delegateWithLog.toSql(configuration, queryString,
-                                        (List<Object>) parameters, getMetadata().getParams()));
-                            }
-                        }
-                    };
-                }
-            };
-        }
-
-        @Override
-        public SQLQuery<?> query() {
-            return queryWithLog();
-        }
-
-        @Override
-        public SQLQuery<?> queryWithLog() {
-            return (SQLQuery<?>) delegateWithLog.queryWithLog();
-        }
-
-        @Override
-        public final SQLDeleteClause deleteWithLog(RelationalPath<?> path) {
-            return delegateWithLog.deleteWithLog(path);
-        }
-
-        @Override
-        public final SQLUpdateClause updateWithLog(RelationalPath<?> path) {
-            return delegateWithLog.updateWithLog(path);
-        }
-
-        @Override
-        public final SQLInsertClause insertWithLog(RelationalPath<?> path) {
-            return delegateWithLog.insertWithLog(path);
-        }
-
-        @Override
-        public final SQLMergeClause mergeWithLog(RelationalPath<?> path) {
-            return delegateWithLog.mergeWithLog(path);
+        public SQLFactory(SQLQueryFactory delegate) {
+            super(delegate);
         }
     }
 
-    static public class TeradataQueryFactoryExt extends TeradataQueryFactory implements QueryFactoryWithLog {
+    static public class TeradataFactory extends QueryFactory<TeradataQuery<?>, TeradataQueryFactory> {
 
-        final private AbstractSQLQueryFactoryDelegate delegateWithLog;
-
-        public TeradataQueryFactoryExt(Configuration configuration, Provider<Connection> connProvider) {
-            super(configuration, connProvider);
-            this.delegateWithLog = init(connProvider);
+        public TeradataFactory() {
+            super(null);
         }
 
-        public TeradataQueryFactoryExt(SQLTemplates templates, Provider<Connection> connProvider) {
-            super(templates, connProvider);
-            this.delegateWithLog = init(connProvider);
+        public TeradataFactory(TeradataQueryFactory delegate) {
+            super(delegate);
         }
+    }
 
-        private AbstractSQLQueryFactoryDelegate init(Provider<Connection> connProvider) {
-            return new AbstractSQLQueryFactoryDelegate(this) {
+    static public QueryFactory<?, ?> create(String sqlTemplates, DataSource dataSource,
+            QuerydslCustomTypeRegister customTypeRegister, String factoryAlias) {
+        Objects.requireNonNull(dataSource, "dataSource");
+        Objects.requireNonNull(customTypeRegister, "customTypeRegister");
 
-                @SuppressWarnings("serial")
-                @Override
-                public AbstractSQLQuery<?, ?> queryWithLog() {
-                    return new SQLQuery<Void>(connProvider, TeradataQueryFactoryExt.this.getConfiguration()) {
-                        @Override
-                        protected void logQuery(String queryString, Collection<Object> parameters) {
-                            if (sqlLog.isTraceEnabled()) {
-                                sqlLog.debug(delegateWithLog.toSql(configuration, queryString,
-                                        (List<Object>) parameters, getMetadata().getParams()));
-                            }
-                        }
-                    };
-                }
-            };
+        QueryFactory<?, ?> queryFactory;
+        if ("PostgreSQL".equalsIgnoreCase(sqlTemplates) || "Postgres".equalsIgnoreCase(sqlTemplates)
+                || "PgSQL".equalsIgnoreCase(sqlTemplates) || "PG".equalsIgnoreCase(sqlTemplates)) {
+            SQLTemplates templates = PostgreSQLTemplates.builder().build();
+            Configuration configuration = new Configuration(templates);
+            PostgreSQLQueryFactory qf = new PostgreSQLQueryFactory(configuration, new ConnectionProvider(dataSource));
+            queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new PostgreSQLFactory(qf));
+        } else if ("MySQL".equalsIgnoreCase(sqlTemplates)) {
+            SQLTemplates templates = MySQLTemplates.builder().build();
+            Configuration configuration = new Configuration(templates);
+            MySQLQueryFactory qf = new MySQLQueryFactory(configuration, new ConnectionProvider(dataSource));
+            queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new MySQLFactory(qf));
+        } else if ("Oracle".equalsIgnoreCase(sqlTemplates)) {
+            SQLTemplates templates = OracleTemplates.builder().build();
+            Configuration configuration = new Configuration(templates);
+            OracleQueryFactory qf = new OracleQueryFactory(configuration, new ConnectionProvider(dataSource));
+            queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new OracleFactory(qf));
+        } else if ("SQLServer".equalsIgnoreCase(sqlTemplates) || "MSSQL".equalsIgnoreCase(sqlTemplates)) {
+            SQLTemplates templates = SQLServerTemplates.builder().build();
+            Configuration configuration = new Configuration(templates);
+            SQLServerQueryFactory qf = new SQLServerQueryFactory(configuration, new ConnectionProvider(dataSource));
+            queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new SQLServerFactory(qf));
+        } else if ("SQLServer2005".equalsIgnoreCase(sqlTemplates)) {
+            SQLTemplates templates = SQLServer2005Templates.builder().build();
+            Configuration configuration = new Configuration(templates);
+            SQLServerQueryFactory qf = new SQLServerQueryFactory(configuration, new ConnectionProvider(dataSource));
+            queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new SQLServerFactory(qf));
+        } else if ("SQLServer2012".equalsIgnoreCase(sqlTemplates)) {
+            SQLTemplates templates = SQLServer2012Templates.builder().build();
+            Configuration configuration = new Configuration(templates);
+            SQLServerQueryFactory qf = new SQLServerQueryFactory(configuration, new ConnectionProvider(dataSource));
+            queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new SQLServerFactory(qf));
+        } else if ("DB2".equalsIgnoreCase(sqlTemplates)) {
+            SQLTemplates templates = DB2Templates.builder().build();
+            Configuration configuration = new Configuration(templates);
+            SQLQueryFactory qf = new SQLQueryFactory(configuration, new ConnectionProvider(dataSource));
+            queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new SQLFactory(qf));
+        } else if ("Derby".equalsIgnoreCase(sqlTemplates)) {
+            SQLTemplates templates = DerbyTemplates.builder().build();
+            Configuration configuration = new Configuration(templates);
+            SQLQueryFactory qf = new SQLQueryFactory(configuration, new ConnectionProvider(dataSource));
+            queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new SQLFactory(qf));
+        } else if ("HSQLDB".equalsIgnoreCase(sqlTemplates)) {
+            SQLTemplates templates = HSQLDBTemplates.builder().build();
+            Configuration configuration = new Configuration(templates);
+            SQLQueryFactory qf = new SQLQueryFactory(configuration, new ConnectionProvider(dataSource));
+            queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new SQLFactory(qf));
+        } else if ("H2".equalsIgnoreCase(sqlTemplates)) {
+            SQLTemplates templates = H2Templates.builder().build();
+            Configuration configuration = new Configuration(templates);
+            SQLQueryFactory qf = new SQLQueryFactory(configuration, new ConnectionProvider(dataSource));
+            queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new SQLFactory(qf));
+        } else if ("Firebird".equalsIgnoreCase(sqlTemplates)) {
+            SQLTemplates templates = FirebirdTemplates.builder().build();
+            Configuration configuration = new Configuration(templates);
+            SQLQueryFactory qf = new SQLQueryFactory(configuration, new ConnectionProvider(dataSource));
+            queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new SQLFactory(qf));
+        } else if ("SQLite".equalsIgnoreCase(sqlTemplates)) {
+            SQLTemplates templates = SQLiteTemplates.builder().build();
+            Configuration configuration = new Configuration(templates);
+            SQLQueryFactory qf = new SQLQueryFactory(configuration, new ConnectionProvider(dataSource));
+            queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new SQLFactory(qf));
+        } else if ("CUBRID".equalsIgnoreCase(sqlTemplates)) {
+            SQLTemplates templates = CUBRIDTemplates.builder().build();
+            Configuration configuration = new Configuration(templates);
+            SQLQueryFactory qf = new SQLQueryFactory(configuration, new ConnectionProvider(dataSource));
+            queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new SQLFactory(qf));
+        } else if ("Teradata".equalsIgnoreCase(sqlTemplates)) {
+            SQLTemplates templates = TeradataTemplates.builder().build();
+            Configuration configuration = new Configuration(templates);
+            TeradataQueryFactory qf = new TeradataQueryFactory(configuration, new ConnectionProvider(dataSource));
+            queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new TeradataFactory(qf));
+        } else {
+            log.warnv("Undefined sqlTemplates: {0}, factoryAlias: {1}", sqlTemplates, factoryAlias);
+            SQLTemplates templates = SQLTemplates.DEFAULT;
+            Configuration configuration = new Configuration(templates);
+            SQLQueryFactory qf = new SQLQueryFactory(configuration, new ConnectionProvider(dataSource));
+            queryFactory = getFactoryAliasInstance(factoryAlias, qf).orElse(new SQLFactory(qf));
         }
+        customTypeRegister.register(queryFactory.getConfiguration());
+        return queryFactory;
+    }
 
-        @Override
-        public TeradataQuery<?> query() {
-            return queryWithLog();
+    static public <Q extends AbstractSQLQuery<?, ?>, F extends AbstractSQLQueryFactory<Q>> Class<? extends QueryFactory<?, ?>> getQueryFactoryType(
+            String sqlTemplates, String factoryAlias) {
+        Optional<Class<? extends QueryFactory<Q, F>>> factoryAliasClass = getFactoryAliasClass(factoryAlias);
+        if ("PostgreSQL".equalsIgnoreCase(sqlTemplates) || "Postgres".equalsIgnoreCase(sqlTemplates)
+                || "PgSQL".equalsIgnoreCase(sqlTemplates) || "PG".equalsIgnoreCase(sqlTemplates)) {
+            return factoryAliasClass.isPresent() ? factoryAliasClass.get() : PostgreSQLFactory.class;
+        } else if ("MySQL".equalsIgnoreCase(sqlTemplates)) {
+            return factoryAliasClass.isPresent() ? factoryAliasClass.get() : MySQLFactory.class;
+        } else if ("Oracle".equalsIgnoreCase(sqlTemplates)) {
+            return factoryAliasClass.isPresent() ? factoryAliasClass.get() : OracleFactory.class;
+        } else if ("SQLServer".equalsIgnoreCase(sqlTemplates) || "MSSQL".equalsIgnoreCase(sqlTemplates)) {
+            return factoryAliasClass.isPresent() ? factoryAliasClass.get() : SQLServerFactory.class;
+        } else if ("SQLServer2005".equalsIgnoreCase(sqlTemplates)) {
+            return factoryAliasClass.isPresent() ? factoryAliasClass.get() : SQLServerFactory.class;
+        } else if ("SQLServer2012".equalsIgnoreCase(sqlTemplates)) {
+            return factoryAliasClass.isPresent() ? factoryAliasClass.get() : SQLServerFactory.class;
+        } else if ("DB2".equalsIgnoreCase(sqlTemplates)) {
+            return factoryAliasClass.isPresent() ? factoryAliasClass.get() : SQLFactory.class;
+        } else if ("Derby".equalsIgnoreCase(sqlTemplates)) {
+            return factoryAliasClass.isPresent() ? factoryAliasClass.get() : SQLFactory.class;
+        } else if ("HSQLDB".equalsIgnoreCase(sqlTemplates)) {
+            return factoryAliasClass.isPresent() ? factoryAliasClass.get() : SQLFactory.class;
+        } else if ("H2".equalsIgnoreCase(sqlTemplates)) {
+            return factoryAliasClass.isPresent() ? factoryAliasClass.get() : SQLFactory.class;
+        } else if ("SQLite".equalsIgnoreCase(sqlTemplates)) {
+            return factoryAliasClass.isPresent() ? factoryAliasClass.get() : SQLFactory.class;
+        } else if ("CUBRID".equalsIgnoreCase(sqlTemplates)) {
+            return factoryAliasClass.isPresent() ? factoryAliasClass.get() : SQLFactory.class;
+        } else if ("Teradata".equalsIgnoreCase(sqlTemplates)) {
+            return factoryAliasClass.isPresent() ? factoryAliasClass.get() : TeradataFactory.class;
+        } else {
+            log.warnv("Undefined sqlTemplates: {0}, factoryAlias: {1}", sqlTemplates, factoryAlias);
+            return SQLFactory.class;
         }
+    }
 
-        @Override
-        public TeradataQuery<?> queryWithLog() {
-            return (TeradataQuery<?>) delegateWithLog.queryWithLog();
+    static <Q extends AbstractSQLQuery<?, ?>, F extends AbstractSQLQueryFactory<Q>> Optional<Class<? extends QueryFactory<Q, F>>> getFactoryAliasClass(
+            String factoryAlias) {
+        Optional<Class<? extends QueryFactory<Q, F>>> factoryAliasClass;
+        if (factoryAlias == null || factoryAlias.isEmpty()) {
+            factoryAliasClass = Optional.empty();
+        } else {
+            ClassLoader cl = Thread.currentThread().getContextClassLoader();
+            if (cl == null) {
+                cl = QueryFactory.class.getClassLoader();
+            }
+            try {
+                @SuppressWarnings("unchecked")
+                Class<? extends QueryFactory<Q, F>> clazz = (Class<? extends QueryFactory<Q, F>>) cl
+                        .loadClass(factoryAlias);
+                factoryAliasClass = Optional.of(clazz);
+            } catch (Exception e) {
+                log.error(factoryAlias, e);
+                throw new RuntimeException(e);
+            }
         }
+        return factoryAliasClass;
+    }
 
-        @Override
-        public final SQLDeleteClause deleteWithLog(RelationalPath<?> path) {
-            return delegateWithLog.deleteWithLog(path);
+    static public <Q extends AbstractSQLQuery<?, ?>, F extends AbstractSQLQueryFactory<Q>> Optional<QueryFactory<Q, F>> getFactoryAliasInstance(
+            String factoryAlias, F qf) {
+        Optional<Class<? extends QueryFactory<Q, F>>> factoryAliasClass = getFactoryAliasClass(factoryAlias);
+        QueryFactory<Q, F> factoryInstance = null;
+        try {
+            if (factoryAliasClass.isPresent()) {
+                factoryInstance = factoryAliasClass.get().getDeclaredConstructor().newInstance();
+                factoryInstance.setDelegate(qf);
+            }
+        } catch (Exception e) {
+            log.error(factoryAlias, e);
+            throw new RuntimeException(e);
         }
-
-        @Override
-        public final SQLUpdateClause updateWithLog(RelationalPath<?> path) {
-            return delegateWithLog.updateWithLog(path);
-        }
-
-        @Override
-        public final SQLInsertClause insertWithLog(RelationalPath<?> path) {
-            return delegateWithLog.insertWithLog(path);
-        }
-
-        @Override
-        public final SQLMergeClause mergeWithLog(RelationalPath<?> path) {
-            return delegateWithLog.mergeWithLog(path);
-        }
+        return Optional.ofNullable(factoryInstance);
     }
 }

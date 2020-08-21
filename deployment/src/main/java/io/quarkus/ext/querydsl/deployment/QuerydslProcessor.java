@@ -40,9 +40,9 @@ import io.quarkus.deployment.recording.RecorderContext;
 import io.quarkus.deployment.util.HashUtil;
 import io.quarkus.ext.querydsl.runtime.AbstractQueryFactoryProducer;
 import io.quarkus.ext.querydsl.runtime.AbstractQueryFactoryProducer.QueryFactoryQualifier;
-import io.quarkus.ext.querydsl.runtime.QueryFactory;
+import io.quarkus.ext.querydsl.runtime.QueryFactoryCreator;
 import io.quarkus.ext.querydsl.runtime.QueryFactoryItemConfig;
-import io.quarkus.ext.querydsl.runtime.QueryFactoryWrapper;
+import io.quarkus.ext.querydsl.runtime.QueryFactory;
 import io.quarkus.ext.querydsl.runtime.QuerydslConfig;
 import io.quarkus.ext.querydsl.runtime.QuerydslCustomTypeRegister;
 import io.quarkus.ext.querydsl.runtime.QuerydslTemplate;
@@ -70,8 +70,8 @@ public class QuerydslProcessor {
 
     private static final DotName QUERY_FACTORY_QUALIFIER = DotName.createSimple(QueryFactoryQualifier.class.getName());
 
-    private final String queryFactoryProducerClassName = AbstractQueryFactoryProducer.class.getPackage().getName() + "."
-            + "QueryFactoryProducer";
+    private final String queryFactoryProducerClassName = AbstractQueryFactoryProducer.class.getPackage().getName()
+            + ".QueryFactoryProducer";
 
     /**
      * Register a extension capability and feature
@@ -169,7 +169,7 @@ public class QuerydslProcessor {
             }
             String template = defaultConfig.template;
             MethodCreator defaultQueryFactoryMethodCreator = classCreator.getMethodCreator("createDefaultQueryFactory",
-                    QueryFactory.getQueryFactoryType(template, factoryAlias));
+                    QueryFactoryCreator.getQueryFactoryType(template, factoryAlias));
 
             defaultQueryFactoryMethodCreator.addAnnotation(Singleton.class);
             defaultQueryFactoryMethodCreator.addAnnotation(Produces.class);
@@ -205,7 +205,7 @@ public class QuerydslProcessor {
                 defaultQueryFactoryMethodCreator.returnValue(
                         defaultQueryFactoryMethodCreator.invokeVirtualMethod(
                                 MethodDescriptor.ofMethod(AbstractQueryFactoryProducer.class, "createQueryFactory",
-                                        QueryFactoryWrapper.class, String.class, DataSource.class,
+                                        QueryFactory.class, String.class, DataSource.class,
                                         QuerydslCustomTypeRegister.class, String.class),
                                 defaultQueryFactoryMethodCreator.getThis(), templateRH, dataSourceRH,
                                 registerCustomTypeRH, factoryAliasRH));
@@ -222,7 +222,7 @@ public class QuerydslProcessor {
                 defaultQueryFactoryMethodCreator.returnValue(
                         defaultQueryFactoryMethodCreator.invokeVirtualMethod(
                                 MethodDescriptor.ofMethod(AbstractQueryFactoryProducer.class, "createQueryFactory",
-                                        QueryFactoryWrapper.class, String.class, DataSource.class, String.class,
+                                        QueryFactory.class, String.class, DataSource.class, String.class,
                                         String.class),
                                 defaultQueryFactoryMethodCreator.getThis(), templateRH, dataSourceRH,
                                 registerCustomTypeRH, factoryAliasRH));
@@ -263,7 +263,7 @@ public class QuerydslProcessor {
 
             MethodCreator namedQueryFactoryMethodCreator = classCreator.getMethodCreator(
                     "createNamedQueryFactory_" + suffix,
-                    QueryFactory.getQueryFactoryType(namedConfig.template, factoryAlias).getName());
+                    QueryFactoryCreator.getQueryFactoryType(namedConfig.template, factoryAlias).getName());
 
             namedQueryFactoryMethodCreator.addAnnotation(ApplicationScoped.class);
             namedQueryFactoryMethodCreator.addAnnotation(Produces.class);
@@ -291,7 +291,7 @@ public class QuerydslProcessor {
 
                 registerCustomTypeCreator.addAnnotation(Inject.class);
                 registerCustomTypeCreator.addAnnotation(AnnotationInstance.create(DotNames.NAMED, null, new AnnotationValue[] {
-                                AnnotationValue.createStringValue("value", registerCustomTypeInjectName) }));
+                        AnnotationValue.createStringValue("value", registerCustomTypeInjectName) }));
 
                 ResultHandle registerCustomTypeRH = namedQueryFactoryMethodCreator
                         .readInstanceField(
@@ -301,7 +301,7 @@ public class QuerydslProcessor {
 
                 namedQueryFactoryMethodCreator.returnValue(namedQueryFactoryMethodCreator.invokeVirtualMethod(
                         MethodDescriptor.ofMethod(AbstractQueryFactoryProducer.class, "createQueryFactory",
-                                QueryFactoryWrapper.class, String.class, DataSource.class,
+                                QueryFactory.class, String.class, DataSource.class,
                                 QuerydslCustomTypeRegister.class, String.class),
                         namedQueryFactoryMethodCreator.getThis(), templateRH, dataSourceRH, registerCustomTypeRH,
                         factoryAliasRH));
@@ -318,7 +318,7 @@ public class QuerydslProcessor {
 
                 namedQueryFactoryMethodCreator.returnValue(namedQueryFactoryMethodCreator.invokeVirtualMethod(
                         MethodDescriptor.ofMethod(AbstractQueryFactoryProducer.class, "createQueryFactory",
-                                QueryFactoryWrapper.class, String.class, DataSource.class, String.class,
+                                QueryFactory.class, String.class, DataSource.class, String.class,
                                 String.class),
                         namedQueryFactoryMethodCreator.getThis(), templateRH, dataSourceRH, registerCustomTypeRH,
                         factoryAliasRH));

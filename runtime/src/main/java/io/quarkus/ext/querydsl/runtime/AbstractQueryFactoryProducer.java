@@ -20,7 +20,7 @@ import org.jboss.logging.Logger;
 public abstract class AbstractQueryFactoryProducer {
     private static final Logger log = Logger.getLogger(AbstractQueryFactoryProducer.class);
 
-    public QueryFactoryWrapper<?, ?> createQueryFactory(String sqlTemplates, DataSource dataSource,
+    public QueryFactory<?, ?> createQueryFactory(String sqlTemplates, DataSource dataSource,
             String registerCustomType, String factoryAlias) {
         Objects.requireNonNull(sqlTemplates, "sqlTemplates");
         Objects.requireNonNull(dataSource, "dataSource");
@@ -44,12 +44,12 @@ public abstract class AbstractQueryFactoryProducer {
         }
     }
 
-    public QueryFactoryWrapper<?, ?> createQueryFactory(String sqlTemplates, DataSource dataSource,
+    public QueryFactory<?, ?> createQueryFactory(String sqlTemplates, DataSource dataSource,
             QuerydslCustomTypeRegister registerCustomType, String factoryAlias) {
         Objects.requireNonNull(sqlTemplates, "sqlTemplates");
         Objects.requireNonNull(dataSource, "dataSource");
         Objects.requireNonNull(registerCustomType, "registerCustomType");
-        return QueryFactory.create(sqlTemplates, dataSource, registerCustomType, factoryAlias);
+        return QueryFactoryCreator.create(sqlTemplates, dataSource, registerCustomType, factoryAlias);
     }
 
     /**
