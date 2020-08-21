@@ -6,3 +6,15 @@ This is a https://github.com/quarkusio/quarkus[Quarkus] extension for https://gi
 Quarkus 1.6.1
 
 QueryDSL 4.3.1
+
+== Start MySQL server with sample data
+----
+docker run -it --rm \
+--name mysql-employees \
+-p 3306:3306 \
+-e MYSQL_ROOT_PASSWORD=college \
+-v /private/tmp/demo/data:/var/lib/mysql \
+-d genschsa/mysql-employees \
+--character-set-server=utf8mb4 \
+--collation-server=utf8mb4_unicode_ci
+----

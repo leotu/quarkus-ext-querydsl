@@ -20,6 +20,7 @@
         <quarkus.version>1.6.1.Final</quarkus.version>
         <compiler-plugin.version>3.8.1</compiler-plugin.version>
         <querydsl.version>4.3.1</querydsl.version>
+        <skipTests>true</skipTests> <!-- skip all tests -->
     </properties>
 
     <modules>
