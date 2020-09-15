@@ -25,9 +25,9 @@ import com.querydsl.sql.dml.SQLMergeClause;
 
 import io.quarkus.agroal.deployment.JdbcDataSourceBuildItem;
 import io.quarkus.arc.deployment.BeanContainerListenerBuildItem;
+import io.quarkus.arc.deployment.BeanDefiningAnnotationBuildItem;
 import io.quarkus.arc.deployment.GeneratedBeanBuildItem;
 import io.quarkus.arc.deployment.UnremovableBeanBuildItem;
-import io.quarkus.arc.deployment.UnremovableBeanBuildItem.BeanClassNameExclusion;
 import io.quarkus.arc.processor.DotNames;
 import io.quarkus.datasource.common.runtime.DataSourceUtil;
 import io.quarkus.deployment.annotations.BuildProducer;
@@ -78,9 +78,14 @@ public class QuerydslProcessor {
      *
      * @return QueryDSL feature build item
      */
-    @Record(ExecutionTime.STATIC_INIT)
+    @BuildStep
     FeatureBuildItem feature() {
         return new FeatureBuildItem("querydsl");
+    }
+
+    @BuildStep
+    BeanDefiningAnnotationBuildItem registerAnnotation() {
+        return new BeanDefiningAnnotationBuildItem(QUERY_FACTORY_QUALIFIER);
     }
 
     @SuppressWarnings("unchecked")
@@ -136,7 +141,7 @@ public class QuerydslProcessor {
                 generatedBean.produce(new GeneratedBeanBuildItem(name, data));
             }
         };
-        unremovableBeans.produce(new UnremovableBeanBuildItem(new BeanClassNameExclusion(queryFactoryProducerClassName)));
+        unremovableBeans.produce(UnremovableBeanBuildItem.beanClassNames(queryFactoryProducerClassName));
 
         ClassCreator classCreator = ClassCreator.builder().classOutput(classOutput)
                 .className(queryFactoryProducerClassName).superClass(AbstractQueryFactoryProducer.class).build();
@@ -165,7 +170,7 @@ public class QuerydslProcessor {
             String factoryAlias = defaultConfig.factoryAlias.orElse(null);
             if (factoryAlias != null) {
                 log.debugv("BeanClassNameExclusion: factoryAlias: {0}", factoryAlias);
-                unremovableBeans.produce(new UnremovableBeanBuildItem(new BeanClassNameExclusion(factoryAlias)));
+                unremovableBeans.produce(UnremovableBeanBuildItem.beanClassNames(factoryAlias));
             }
             String template = defaultConfig.template;
             MethodCreator defaultQueryFactoryMethodCreator = classCreator.getMethodCreator("createDefaultQueryFactory",
@@ -215,8 +220,7 @@ public class QuerydslProcessor {
                         : defaultQueryFactoryMethodCreator.loadNull();
 
                 if (defaultConfig.registerCustomType.isPresent()) {
-                    unremovableBeans.produce(new UnremovableBeanBuildItem(
-                            new BeanClassNameExclusion(defaultConfig.registerCustomType.get())));
+                    unremovableBeans.produce(UnremovableBeanBuildItem.beanClassNames(defaultConfig.registerCustomType.get()));
                 }
 
                 defaultQueryFactoryMethodCreator.returnValue(
@@ -258,7 +262,7 @@ public class QuerydslProcessor {
             String factoryAlias = namedConfig.factoryAlias.orElse(null);
             if (factoryAlias != null) {
                 log.debugv("BeanClassNameExclusion: factoryAlias: {0}", factoryAlias);
-                unremovableBeans.produce(new UnremovableBeanBuildItem(new BeanClassNameExclusion(factoryAlias)));
+                unremovableBeans.produce(UnremovableBeanBuildItem.beanClassNames(factoryAlias));
             }
 
             MethodCreator namedQueryFactoryMethodCreator = classCreator.getMethodCreator(
@@ -312,8 +316,7 @@ public class QuerydslProcessor {
                         : namedQueryFactoryMethodCreator.loadNull();
 
                 if (namedConfig.registerCustomType.isPresent()) {
-                    unremovableBeans.produce(new UnremovableBeanBuildItem(
-                            new BeanClassNameExclusion(namedConfig.registerCustomType.get())));
+                    unremovableBeans.produce(UnremovableBeanBuildItem.beanClassNames(namedConfig.registerCustomType.get()));
                 }
 
                 namedQueryFactoryMethodCreator.returnValue(namedQueryFactoryMethodCreator.invokeVirtualMethod(
