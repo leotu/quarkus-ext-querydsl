@@ -9,5 +9,5 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
  */
 @RegisterForReflection
 public class DSLFactory2 extends MySQLFactory {
-
+  int dummy = 0;
 }
